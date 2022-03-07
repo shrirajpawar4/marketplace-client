@@ -3,7 +3,9 @@ import Image from 'next/image'
 import { Button, Stack, Divider, Heading, Flex, Box, Spacer, Text, Link } from '@chakra-ui/react'
 import {useRouter} from "next/router"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+import mintNfts from '../src/utils/mintNfts.json';
 
 
 
@@ -28,7 +30,6 @@ export default function Home() {
         const account = accounts[0];
         console.log("Account: ", account);
         setCurrAccount(account);
-        getAllWaves();
       } else {
         console.log("no account found");
       }
@@ -51,6 +52,49 @@ export default function Home() {
       .catch((err) => console.log(err));
   };
 
+  const getNftFromContract = async () => {
+    const CONTRACT_ADDRESS = "0x9A4Ea4Ec7f13d255bC9B855dcBb97595F1E49253";
+  
+    try {
+      const { ethereum } = window;
+  
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const connectedContract = new ethers.Contract(CONTRACT_ADDRESS, mintNfts.abi, signer);
+  
+        console.log("Going to pop wallet now to pay gas...")
+        let nftTxn = await connectedContract.safeMint();
+  
+        console.log("Mining...please wait.")
+        await nftTxn.wait();
+        
+        console.log(`Mined, see transaction: https://rinkeby.etherscan.io/tx/${nftTxn.hash}`);
+  
+      } else {
+        console.log("Ethereum object doesn't exist!");
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const renderNotConnectedContainer = () => (
+    <Button colorScheme='teal' variant='outline' onClick={connectWallet}>
+      Connect to Wallet
+    </Button>
+  );
+
+  const renderMintUI = () => (
+    <button onClick={contractMintNft}>
+      Mint NFT
+    </button>
+  )
+
+  useEffect(() => {
+    checkWalletConnected();
+  }, [])
+
   return (
     <>
     <Flex>
@@ -64,11 +108,17 @@ export default function Home() {
       <Button onClick={() => router.push('/create')} colorScheme='teal' variant='ghost'>Create</Button>
       <Button onClick={() => router.push('/collection')} colorScheme='teal' variant='ghost'>Collection</Button>
       
-      {
-        walletConnected ? 
-        <Button colorScheme='cyan' variant='outline' onClick={connectWallet}>Connect Wallet</Button> :
-        <Text colorScheme='cyan' variant='outline'>{currAccount}</Text>
-      }
+
+      {/* <Button colorScheme='cyan' variant='outline' onClick={connectWallet}>Connect Wallet</Button> */}
+      {currAccount === "" 
+    ? renderNotConnectedContainer()
+    : (
+      <Button onClick={getNftFromContract}>
+        Mint NFT
+      </Button>
+    )
+  }
+       
       </Stack>
     </Flex>
 
